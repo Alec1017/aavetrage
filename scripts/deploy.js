@@ -1,12 +1,12 @@
 const hre = require("hardhat");
 
 async function deploy() {
-    const Greeter = await hre.ethers.getContractFactory("Test");
-    const greeter = await Greeter.deploy();
+    const Aavetrage = await hre.ethers.getContractFactory("Aavetrage");
+    const aavetrage = await Aavetrage.deploy('0x88757f2f99175387ab4c6a4b3067c77a695b0349');
 
-    await greeter.deployed();
+    await aavetrage.deployed();
 
-    console.log("Greeter deployed to:", greeter.address);
+    console.log("Aavetrage deployed to:", aavetrage.address);
 }
 
 deploy()
