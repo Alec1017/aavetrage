@@ -2,7 +2,7 @@ const hre = require("hardhat");
 
 async function deploy() {
     const Aavetrage = await hre.ethers.getContractFactory("Aavetrage");
-    const aavetrage = await Aavetrage.deploy('0x88757f2f99175387ab4c6a4b3067c77a695b0349');
+    const aavetrage = await Aavetrage.deploy('0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5');
 
     await aavetrage.deployed();
 
