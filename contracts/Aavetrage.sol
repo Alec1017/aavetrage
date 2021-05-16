@@ -6,22 +6,45 @@ pragma experimental ABIEncoderV2;
 
 import { ILendingPoolAddressesProvider } from '@aave/protocol-v2/contracts/interfaces/ILendingPoolAddressesProvider.sol';
 import { ILendingPool } from '@aave/protocol-v2/contracts/interfaces/ILendingPool.sol';
-import { AaveProtocolDataProvider } from '@aave/protocol-v2/contracts/misc/AaveProtocolDataProvider.sol';
+import { DataTypes } from '@aave/protocol-v2/contracts/protocol/libraries/types/DataTypes.sol';
 
 
 contract Aavetrage {
     ILendingPoolAddressesProvider private provider;
-    AaveProtocolDataProvider private dataProvider;
     ILendingPool private lendingPool;
 
     constructor(address _provider) public {
         provider = ILendingPoolAddressesProvider(_provider);
         lendingPool = ILendingPool(provider.getLendingPool());
-
-        dataProvider = new AaveProtocolDataProvider(provider);
     }
 
-    function peek() public view returns (AaveProtocolDataProvider.TokenData[] memory) {
-        return dataProvider.getAllReservesTokens();
+
+    function peek() public view returns (address, address) {
+        address[] memory reserves = lendingPool.getReservesList();
+
+        uint128 highestSupplyRate = 0; 
+        uint128 lowestBorrowRate = type(uint128).max;
+
+        address bestSupplyToken;
+        address bestBorrowToken;
+
+        for (uint256 i = 0; i < reserves.length; i++) {
+            DataTypes.ReserveData memory reserveData = lendingPool.getReserveData(reserves[i]);
+
+            if (reserveData.currentLiquidityRate > highestSupplyRate) {
+                bestSupplyToken = reserves[i];
+                highestSupplyRate = reserveData.currentLiquidityRate;
+            }
+
+            if (reserveData.currentVariableBorrowRate > 0 && reserveData.currentVariableBorrowRate < lowestBorrowRate) {
+                bestBorrowToken = reserves[i];
+                lowestBorrowRate = reserveData.currentVariableBorrowRate;
+            }
+        }
+
+        require(bestBorrowToken != address(0), 'No best borrow token found');
+        require(bestSupplyToken != address(0), 'No best supply token found');
+
+        return (bestBorrowToken, bestSupplyToken);
     }
 }

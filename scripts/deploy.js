@@ -14,7 +14,7 @@ async function deploy() {
 
     console.log("Aavetrage deployed to:", aavetrage.address);
 
-    contractArtifact['deployAddress'] = aavetrage.address
+    contractArtifact['deployAddress'] = aavetrage.address;
 
     await fs.promises.writeFile("./artifacts/contracts/Aavetrage.sol/Aavetrage.json", JSON.stringify(contractArtifact, null, 4), function(err, result) {
       if (err) console.log('error', err);
