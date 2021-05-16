@@ -20,6 +20,8 @@ contract Aavetrage {
 
 
     function peek() public view returns (address, address) {
+
+        // Get all reserves on Aave
         address[] memory reserves = lendingPool.getReservesList();
 
         uint128 highestSupplyRate = 0; 
@@ -31,11 +33,13 @@ contract Aavetrage {
         for (uint256 i = 0; i < reserves.length; i++) {
             DataTypes.ReserveData memory reserveData = lendingPool.getReserveData(reserves[i]);
 
+            // Store the reserve with the highest supply rate
             if (reserveData.currentLiquidityRate > highestSupplyRate) {
                 bestSupplyToken = reserves[i];
                 highestSupplyRate = reserveData.currentLiquidityRate;
             }
 
+            // Store the reserve with the lowest, non-zero borrow rate
             if (reserveData.currentVariableBorrowRate > 0 && reserveData.currentVariableBorrowRate < lowestBorrowRate) {
                 bestBorrowToken = reserves[i];
                 lowestBorrowRate = reserveData.currentVariableBorrowRate;
