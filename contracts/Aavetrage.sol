@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
+import { ReserveConfiguration } from '@aave/protocol-v2/contracts/protocol/libraries/configuration/ReserveConfiguration.sol';
 import { ILendingPoolAddressesProvider } from '@aave/protocol-v2/contracts/interfaces/ILendingPoolAddressesProvider.sol';
 import { ILendingPool } from '@aave/protocol-v2/contracts/interfaces/ILendingPool.sol';
 import { IPriceOracle } from '@aave/protocol-v2/contracts/interfaces/IPriceOracle.sol';
@@ -14,6 +15,10 @@ import { ICreditDelegationToken } from '@aave/protocol-v2/contracts/interfaces/I
 
 contract Aavetrage {
     using SafeMath for uint256;
+
+    // Used to determine the number of decimals for a reserve
+    uint256 constant DECIMALS_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FFFFFFFFFFFF;
+    uint256 constant RESERVE_DECIMALS_START_BIT_POSITION = 48;
 
     ILendingPoolAddressesProvider private provider;
     ILendingPool private lendingPool;
@@ -25,7 +30,7 @@ contract Aavetrage {
         priceOracle = IPriceOracle(provider.getPriceOracle());
     }
 
-    // event Borrow(uint256 availBorrow, uint256 tokenPrice, uint256 amountToBorrow);
+    event Borrow(address tokenBorrowed, uint256 amountBorrowed);
 
 
     function peek() public view returns (address, address) {
@@ -79,28 +84,39 @@ contract Aavetrage {
         IERC20(token).approve(address(lendingPool), collateralAmount);
 
         // Deposit the collateral asset (kovan DAI)
-        lendingPool.deposit(token, collateralAmount, msg.sender, 0);
+        lendingPool.deposit(token, collateralAmount, address(this), 0);
     }
 
 
     function borrowToken(address token) public {
-        // (uint256 totalCol, uint256 totalDebt, uint256 availBorrow, uint256 liqThresh, uint256 ltv, uint256 healthFac) = lendingPool.getUserAccountData(msg.sender);
-        
-        // DataTypes.ReserveData memory reserveData = lendingPool.getReserveData(token);
+        DataTypes.ReserveData memory reserveData = lendingPool.getReserveData(token);
 
-        // ICreditDelegationToken(reserveData.variableDebtTokenAddress).approveDelegation(msg.sender, 50 * 1e6);
-        
-        // Get the token price in ETH using a price oracle
-        // uint256 tokenPrice = priceOracle.getAssetPrice(token);
+        uint256 borrowAmount = determineBorrowAmount(token);
 
-        // uint256 amountToBorrow = uint256((availBorrow).div(tokenPrice)) * (10**18);
+        // Delegate this contract as a borrower on behalf of msg.sender
+        ICreditDelegationToken(reserveData.variableDebtTokenAddress).approveDelegation(address(this), borrowAmount);
 
         // borrow the token from Aave
-        lendingPool.borrow(token, 50 * (10 ** 6), 2, 0, msg.sender);
+        lendingPool.borrow(token, borrowAmount, 2, 0, address(this));
 
-        // emit Borrow(availBorrow, tokenPrice, amountToBorrow);
+        emit Borrow(token, borrowAmount);
 
     }
+
+    function determineBorrowAmount(address token) private view returns (uint256) {
+        DataTypes.ReserveData memory reserveData = lendingPool.getReserveData(token);
+
+        uint256 tokenDecimals = (reserveData.configuration.data & ~DECIMALS_MASK) >> RESERVE_DECIMALS_START_BIT_POSITION;
+        
+        // Get the token price in ETH using a price oracle
+        uint256 tokenPrice = priceOracle.getAssetPrice(token);
+
+        // Divide the amount in ETH that is available to use as borrow collateral by the individual token price in ETH
+        uint256 amountToBorrow = uint256((availBorrow).div(tokenPrice)) * (10 ** tokenDecimals);
+
+        return tokenDecimals;
+    }
+
 
     function withdrawToken(address token) private {
 
