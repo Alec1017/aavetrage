@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const contractArtifact = require('../artifacts/contracts/Aavetrage.sol/Aavetrage.json');
 const erc20ABI = require('../utils/standardABI')
+
 const kovanDaiAddress = '0xFf795577d9AC8bD7D90Ee22b6C1703490b6512FD'
 
 async function run() {
@@ -18,10 +19,8 @@ async function run() {
     const aavetrage = new hre.ethers.Contract(contractArtifact.deployAddress, contractArtifact.abi, wallet)
     const kovanDAI = new hre.ethers.Contract(kovanDaiAddress, erc20ABI, wallet);
 
-    const [ bestBorrowToken, bestSupplyToken ] = await aavetrage.peek()
-
-    console.log('best borrow', bestBorrowToken);
-    console.log('best supply', bestSupplyToken);
+    const peek = await aavetrage.peek()
+    const peekResult = await peek.wait()
 
     // // uses 100 kovan DAI as collateral
     const collateral = hre.ethers.utils.parseEther('100')
@@ -30,7 +29,7 @@ async function run() {
     const approvalResult = await approval.wait()
 
 
-    await aavetrage.guap(bestBorrowToken, bestSupplyToken, kovanDaiAddress, collateral, {gasLimit: 400000});
+    await aavetrage.guap(kovanDaiAddress, collateral, {gasLimit: 1200000});
     console.log(`${collateral} DAI collateral successfully deposited to Aave`);
 }
 
@@ -50,16 +49,16 @@ async function borrow() {
     // console.log(values);
 }
 
-borrow()
-    .then(() => process.exit(0))
-    .catch(error => {
-        console.error(error);
-        process.exit(1);
-    });
-
-// run()
+// borrow()
 //     .then(() => process.exit(0))
 //     .catch(error => {
 //         console.error(error);
 //         process.exit(1);
 //     });
+
+run()
+    .then(() => process.exit(0))
+    .catch(error => {
+        console.error(error);
+        process.exit(1);
+    });
