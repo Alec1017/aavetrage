@@ -3,19 +3,29 @@ pragma solidity >=0.6.12;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+
 import { ILendingPoolAddressesProvider } from '@aave/protocol-v2/contracts/interfaces/ILendingPoolAddressesProvider.sol';
 import { ILendingPool } from '@aave/protocol-v2/contracts/interfaces/ILendingPool.sol';
+import { IPriceOracle } from '@aave/protocol-v2/contracts/interfaces/IPriceOracle.sol';
 import { DataTypes } from '@aave/protocol-v2/contracts/protocol/libraries/types/DataTypes.sol';
+import { ICreditDelegationToken } from '@aave/protocol-v2/contracts/interfaces/ICreditDelegationToken.sol';
 
 
 contract Aavetrage {
+    using SafeMath for uint256;
+
     ILendingPoolAddressesProvider private provider;
     ILendingPool private lendingPool;
+    IPriceOracle private priceOracle;
 
     constructor(address _provider) public {
         provider = ILendingPoolAddressesProvider(_provider);
         lendingPool = ILendingPool(provider.getLendingPool());
+        priceOracle = IPriceOracle(provider.getPriceOracle());
     }
+
+    // event Borrow(uint256 availBorrow, uint256 tokenPrice, uint256 amountToBorrow);
 
 
     function peek() public view returns (address, address) {
@@ -47,6 +57,7 @@ contract Aavetrage {
 
         require(bestBorrowToken != address(0), 'No best borrow token found');
         require(bestSupplyToken != address(0), 'No best supply token found');
+        require(highestSupplyRate > lowestBorrowRate, 'Supply rate should strictly be greater than borrow rate');
 
         return (bestBorrowToken, bestSupplyToken);
     }
@@ -57,6 +68,9 @@ contract Aavetrage {
 
         // Deposit the collateral into Aave
         depositCollateral(collateralAsset, collateralAmount);
+
+        // borrow the token with the lowest borrow rate
+        // borrowToken(bestBorrowToken);
     }
 
 
@@ -68,5 +82,29 @@ contract Aavetrage {
         lendingPool.deposit(token, collateralAmount, msg.sender, 0);
     }
 
-    // function borrowToken(address token, )
+
+    function borrowToken(address token) public {
+        // (uint256 totalCol, uint256 totalDebt, uint256 availBorrow, uint256 liqThresh, uint256 ltv, uint256 healthFac) = lendingPool.getUserAccountData(msg.sender);
+        
+        // DataTypes.ReserveData memory reserveData = lendingPool.getReserveData(token);
+
+        // ICreditDelegationToken(reserveData.variableDebtTokenAddress).approveDelegation(msg.sender, 50 * 1e6);
+        
+        // Get the token price in ETH using a price oracle
+        // uint256 tokenPrice = priceOracle.getAssetPrice(token);
+
+        // uint256 amountToBorrow = uint256((availBorrow).div(tokenPrice)) * (10**18);
+
+        // borrow the token from Aave
+        lendingPool.borrow(token, 50 * (10 ** 6), 2, 0, msg.sender);
+
+        // emit Borrow(availBorrow, tokenPrice, amountToBorrow);
+
+    }
+
+    function withdrawToken(address token) private {
+
+        // Withdraws the entire available 
+        lendingPool.withdraw(token, type(uint).max, msg.sender);
+    }
 }

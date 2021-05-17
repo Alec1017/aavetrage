@@ -34,9 +34,32 @@ async function run() {
     console.log(`${collateral} DAI collateral successfully deposited to Aave`);
 }
 
-run()
+async function borrow() {
+    // Get the provider
+    const provider = new hre.ethers.providers.AlchemyProvider('kovan', process.env.ALCHEMY_API_KEY) //kovan
+
+    const wallet = new hre.ethers.Wallet(process.env.METAMASK_PRIVATE_KEY, provider)
+
+    // Create a contract instance
+    const aavetrage = new hre.ethers.Contract(contractArtifact.deployAddress, contractArtifact.abi, wallet)
+
+    const [ bestBorrowToken, bestSupplyToken, rate ] = await aavetrage.peek()
+
+    const values = await aavetrage.borrowToken(bestBorrowToken, {gasLimit: 400000});
+    // console.log('Token was borrowed using collateral');
+    // console.log(values);
+}
+
+borrow()
     .then(() => process.exit(0))
     .catch(error => {
         console.error(error);
         process.exit(1);
     });
+
+// run()
+//     .then(() => process.exit(0))
+//     .catch(error => {
+//         console.error(error);
+//         process.exit(1);
+//     });
