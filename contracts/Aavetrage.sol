@@ -36,6 +36,8 @@ contract Aavetrage {
     IERC20 private supplyToken;
     IERC20 private collateralToken;
 
+    uint256 private collateralReserve;
+
     constructor(address _provider) public {
         provider = ILendingPoolAddressesProvider(_provider);
         lendingPool = ILendingPool(provider.getLendingPool());
@@ -45,6 +47,7 @@ contract Aavetrage {
     }
 
     event Peek(address bestBorrow, address bestSupply, uint256 lowestBorrowRate, uint256 highestSupplyRate);
+    event Guap(address collateralToken, address borrowToken, address supplyToken);
     event Borrow(address tokenBorrowed, uint256 amountBorrowed);
     event Swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin, address to);
 
@@ -96,17 +99,48 @@ contract Aavetrage {
         collateralToken = IERC20(collateralAsset);
         collateralToken.transferFrom(msg.sender, address(this), collateralAmount);
 
+        // put 5% of collateral into a reserve for repaying interest later
+        (uint256 remainingCollateral, uint256 reserve) = partitionFunds(collateralAmount, 5);
+        collateralReserve = reserve;
+
         // Deposit the collateral into Aave
-        depositToken(address(collateralToken), collateralAmount);
+        depositToken(address(collateralToken), remainingCollateral);
 
         // borrow the token with the lowest borrow rate
         borrowAaveToken(address(borrowToken));
 
         // swap the borrowed to token for the best supply token
-        swapTokens(address(borrowToken), address(supplyToken), borrowToken.balanceOf(address(this)), 1, address(this));
+        swapTokens(address(borrowToken), address(supplyToken), borrowToken.balanceOf(address(this)), 1, address(this), false);
 
         // deposit the swapped supply token
         depositToken(address(supplyToken), supplyToken.balanceOf(address(this)));
+
+        emit Guap(address(collateralToken), address(borrowToken), address(supplyToken));
+    }
+
+
+    function shut() public {
+        require(address(borrowToken) != address(0), 'No borrow token found. Peek() not called yet.');
+        require(address(supplyToken) != address(0), 'No supply token found. Peek() not called yet.');
+
+        // withdraw the supply token
+        lendingPool.withdraw(address(supplyToken), type(uint).max, address(this));
+
+        // swap the supply token for the borrow token
+        swapTokens(address(supplyToken), address(borrowToken), supplyToken.balanceOf(address(this)), 1, address(this), false);
+
+        // swap collateral reserve to the borrow token to cover interest
+        swapTokens(address(collateralToken), address(borrowToken), collateralToken.balanceOf(address(this)), 1, address(this), true);
+
+        // repay the borrow token
+        borrowToken.approve(address(lendingPool), borrowToken.balanceOf(address(this)));
+        lendingPool.repay(address(borrowToken), borrowToken.balanceOf(address(this)), 2, address(this));
+
+        // withdraw the collateral token
+        lendingPool.withdraw(address(collateralToken), type(uint).max, address(this));
+
+        // transfer collateral funds back to end-user
+        collateralToken.transfer(msg.sender, collateralToken.balanceOf(address(this)));
     }
 
 
@@ -133,6 +167,7 @@ contract Aavetrage {
         emit Borrow(token, borrowAmount);
     }
 
+
     function determineBorrowAmount(address token) private view returns (uint256) {
         (, , uint256 availBorrow , , ,) = lendingPool.getUserAccountData(address(this));
 
@@ -144,29 +179,41 @@ contract Aavetrage {
         uint256 tokenPrice = priceOracle.getAssetPrice(token);
 
         // Divide the amount in ETH that is available to use as borrow collateral by the individual token price in ETH
-        uint256 amountToBorrow = uint256((availBorrow).div(tokenPrice)) * (10 ** tokenDecimals);
+        uint256 amountToBorrow = availBorrow.mul(10 ** tokenDecimals).div(tokenPrice);
 
         return amountToBorrow;
     }
 
 
-    // function withdrawToken(address token) private {
-
-    //     // Withdraws the entire available 
-    //     lendingPool.withdraw(token, type(uint).max, msg.sender);
-    // }
-
-    function swapTokens(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin, address to) private {
+    function swapTokens(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin, address to, bool swapReserve) private {
         IERC20(tokenIn).approve(address(uniswapRouter), amountIn);
 
         // build path for swapping tokens
-        address[] memory path = new address[](3);
-        path[0] = tokenIn;
-        path[1] = WETH;
-        path[2] = tokenOut;
+        address[] memory path;
+        if (swapReserve) {
+            // Stablecoin collaterals get better rates with a direct path
+            path = new address[](2);
+            path[0] = tokenIn;
+            path[1] = tokenOut;
+        } else {
+            // everything else should use WETH as an intermediary
+            path = new address[](3);
+            path[0] = tokenIn;
+            path[1] = WETH;
+            path[2] = tokenOut;
+        }
 
         uniswapRouter.swapExactTokensForTokens(amountIn, amountOutMin, path, to, block.timestamp);
 
         emit Swap(tokenIn, tokenOut, amountIn, amountOutMin, to);
+    }
+
+
+    function partitionFunds(uint256 amount, uint256 percentage) private view returns (uint256, uint256) {
+        uint256 reserve = amount.mul(percentage).div(100);
+
+        uint remaining = amount.sub(reserve);
+
+        return (remaining, reserve);
     }
 }
