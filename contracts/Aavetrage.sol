@@ -1,9 +1,8 @@
-//Contract based on https://docs.openzeppelin.com/contracts/3.x/erc721
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.6.12;
 pragma experimental ABIEncoderV2;
 
-
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { ILendingPoolAddressesProvider } from '@aave/protocol-v2/contracts/interfaces/ILendingPoolAddressesProvider.sol';
 import { ILendingPool } from '@aave/protocol-v2/contracts/interfaces/ILendingPool.sol';
 import { DataTypes } from '@aave/protocol-v2/contracts/protocol/libraries/types/DataTypes.sol';
@@ -51,4 +50,23 @@ contract Aavetrage {
 
         return (bestBorrowToken, bestSupplyToken);
     }
+
+    function guap(address bestBorrowToken, address bestSupplyToken, address collateralAsset, uint256 collateralAmount) public {
+        // Transfer collateral token to this contract
+        IERC20(collateralAsset).transferFrom(msg.sender, address(this), collateralAmount);
+
+        // Deposit the collateral into Aave
+        depositCollateral(collateralAsset, collateralAmount);
+    }
+
+
+    function depositCollateral(address token, uint256 collateralAmount) private {
+        // approve the deposit
+        IERC20(token).approve(address(lendingPool), collateralAmount);
+
+        // Deposit the collateral asset (kovan DAI)
+        lendingPool.deposit(token, collateralAmount, msg.sender, 0);
+    }
+
+    // function borrowToken(address token, )
 }
