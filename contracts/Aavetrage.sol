@@ -52,6 +52,9 @@ contract Aavetrage {
     event Swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin, address to);
 
 
+    /**
+     * @dev Gets the best borrow/supply rate from the Aave V2 markets
+     **/
     function peek() public {
 
         // Get all reserves on Aave
@@ -90,6 +93,11 @@ contract Aavetrage {
     }
 
 
+    /**
+     * @dev Performs arbitrage on Aave with borrowed and supplied tokens
+     * @param collateralAsset The address of the token posted as collateral
+     * @param collateralAmount The amount of collateral that is posted
+     **/
     function guap(address collateralAsset, uint256 collateralAmount) public {
         require(address(borrowToken) != address(0), 'No borrow token found. Peek() not called yet.');
         require(address(supplyToken) != address(0), 'No supply token found. Peek() not called yet.');
@@ -119,6 +127,9 @@ contract Aavetrage {
     }
 
 
+    /**
+     * @dev Unwinds positions in Aave and returns collateral to end user
+     **/
     function shut() public {
         require(address(borrowToken) != address(0), 'No borrow token found. Peek() not called yet.');
         require(address(supplyToken) != address(0), 'No supply token found. Peek() not called yet.');
@@ -129,10 +140,10 @@ contract Aavetrage {
         // swap the supply token for the borrow token
         swapTokens(address(supplyToken), address(borrowToken), supplyToken.balanceOf(address(this)), 1, address(this), false);
 
-        // swap collateral reserve to the borrow token to cover interest
+        // swap collateral reserve to the borrow token to cover interest costs
         swapTokens(address(collateralToken), address(borrowToken), collateralToken.balanceOf(address(this)), 1, address(this), true);
 
-        // repay the borrow token
+        // repay the borrow token to Aave
         borrowToken.approve(address(lendingPool), borrowToken.balanceOf(address(this)));
         lendingPool.repay(address(borrowToken), borrowToken.balanceOf(address(this)), 2, address(this));
 
@@ -144,6 +155,11 @@ contract Aavetrage {
     }
 
 
+    /**
+     * @dev Deposits a token into the Aave protocol
+     * @param token The address of the token to be deposited
+     * @param amount The amount of the token to deposit
+     **/
     function depositToken(address token, uint256 amount) private {
         // approve the deposit
         IERC20(token).approve(address(lendingPool), amount);
@@ -153,6 +169,10 @@ contract Aavetrage {
     }
 
 
+    /**
+     * @dev Uses collateral to borrow a token from the Aave protocol
+     * @param token The address of the token to borrow
+     **/
     function borrowAaveToken(address token) private {
         DataTypes.ReserveData memory reserveData = lendingPool.getReserveData(token);
 
@@ -168,6 +188,10 @@ contract Aavetrage {
     }
 
 
+    /**
+     * @dev Determines how much of an asset to borrow based on total collateral and asset price using an oracle
+     * @param token The address of the token
+     **/
     function determineBorrowAmount(address token) private view returns (uint256) {
         (, , uint256 availBorrow , , ,) = lendingPool.getUserAccountData(address(this));
 
@@ -185,6 +209,15 @@ contract Aavetrage {
     }
 
 
+    /**
+     * @dev Leverages uniswap router to swap two tokens
+     * @param tokenIn The token to swap into another token
+     * @param tokenOut The token to receive after swapping
+     * @param amountIn The amount of a token to swap
+     * @param amountOutMin The minimun amount to receive from the swap to prevent a revert
+     * @param to The address to send the swapped token
+     * @param swapReserve Flag that determines whether to use WETH as an intermediary or not
+     **/
     function swapTokens(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin, address to, bool swapReserve) private {
         IERC20(tokenIn).approve(address(uniswapRouter), amountIn);
 
@@ -209,6 +242,11 @@ contract Aavetrage {
     }
 
 
+    /**
+     * @dev Saves some of the initial collateral to cover any costs or accrued interest
+     * @param amount The total amount of collateral provided
+     * @param percentage The percentage (as an integer) that should be set aside
+     **/
     function partitionFunds(uint256 amount, uint256 percentage) private view returns (uint256, uint256) {
         uint256 reserve = amount.mul(percentage).div(100);
 
