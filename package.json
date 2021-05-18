@@ -11,10 +11,7 @@
     "chai": "^4.3.4",
     "dotenv": "^9.0.2",
     "ethers": "^5.1.4",
-    "ganache-cli": "^6.12.2",
-    "ganache-core": "^2.13.2",
-    "hardhat": "^2.3.0",
-    "truffle": "^5.3.6"
+    "hardhat": "^2.3.0"
   },
   "scripts": {
     "compile": "npx hardhat compile",
