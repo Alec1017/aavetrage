@@ -21,7 +21,6 @@
     "start-node": "npx hardhat node",
     "deploy-kovan": "npx hardhat run scripts/deploy.js --network kovan",
     "aavetrage": "node scripts/aavetrage.js",
-    "transferDai": "node scripts/transferDai.js",
     "test": "npx hardhat test"
   },
   "devDependencies": {

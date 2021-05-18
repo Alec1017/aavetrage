@@ -43,7 +43,7 @@ async function run(collateralAmount) {
     const shut = await aavetrage.shut({gasLimit: 1200000});
     const shutResult = await shut.wait()
 
-    console.log('Unwound positiona and withdrew collateral');
+    console.log('Unwound position and withdrew collateral');
 }
 
 

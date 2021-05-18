@@ -91,7 +91,7 @@ describe('Aavetrage Tests', function () {
             await expect(aavetrageContract.guap(daiToken.address, hre.ethers.utils.parseEther('0'))).to.be.revertedWith('Must supply a collateral amount greater than 0.')
         });
 
-        it('Should call guap() and debit collateral from end user account', async function() {
+        it('Should debit collateral from end user account', async function() {
             const peek = await aavetrageContract.peek()
             const peekResult = await peek.wait()
 
