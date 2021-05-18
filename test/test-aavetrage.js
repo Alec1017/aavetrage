@@ -1,10 +1,14 @@
-const hre = require("hardhat");
-const { expect } = require("chai");
+const hre = require('hardhat');
+const { expect, use } = require('chai');
+const { solidity } = require('ethereum-waffle');
 
 const addresses = require('../utils/addresses')
+const { transferDai } = require('../utils/impersonate');
+
+use(solidity);
 
 
-describe("Aavetrage Tests", function () {
+describe('Aavetrage Tests', function () {
     let Aavetrage;
     let aavetrageContract;
     let owner;
@@ -20,131 +24,118 @@ describe("Aavetrage Tests", function () {
         let signer = signers[0];
 
         daiToken = token.connect(signer);
+
+        // transfer enough DAI to the user account for the tests to work
+        await transferDai(1000, signer.address);
     });
 
     beforeEach(async function () {
-        Aavetrage = await hre.ethers.getContractFactory("Aavetrage");
+        Aavetrage = await hre.ethers.getContractFactory('Aavetrage');
 
         let signers = await hre.ethers.getSigners();
         owner = signers[0];
 
-        aavetrageContract = await Aavetrage.deploy(addresses.aave.mainnetProvider, addresses.uniswap.mainnetFactory, addresses.tokens.mainnet.WETH);
+        aavetrageContract = await Aavetrage.deploy(addresses.aave.mainnetProvider, addresses.uniswap.router, addresses.tokens.mainnet.WETH);
     });
 
  
-    // describe("Deployment", function () {
-    //     it("Should ensure there is DAI than can be used as capital", async function () {
-    //         const ownerBalance = await daiToken.balanceOf(owner.address);
-    //         expect(parseInt(ownerBalance)).to.be.greaterThan(0);
-    //     });
-    // });
+    describe("Deployment", function () {
 
-    // describe("Peek", function() {
-    //     it("Should not have a borrow or supply token set before Peek", async function() {
-    //         const borrowToken = await aavetrageContract.borrowToken()
-    //         const supplyToken = await aavetrageContract.supplyToken()
+        it("Should provide a contract address after deployment", async function() {
+            expect(aavetrageContract.address).does.not.equal(zeroAddress);
+        });
 
-    //         expect(borrowToken).to.equal(zeroAddress);
-    //         expect(supplyToken).to.equal(zeroAddress);
-    //     });
+        it("Should ensure there is DAI than can be used as capital", async function() {
+            const ownerBalance = await daiToken.balanceOf(owner.address);
+            expect(parseInt(ownerBalance)).to.be.greaterThan(0);
+        });
+    });
 
-    //     it("Should set a best borrow and best supply token after Peek", async function() {
-    //         const peek = await aavetrageContract.peek()
-    //         const peekResult = await peek.wait()
+    describe("Peek", function() {
+
+        it("Should not have a borrow or supply token set before Peek", async function() {
+            const borrowToken = await aavetrageContract.borrowToken()
+            const supplyToken = await aavetrageContract.supplyToken()
+
+            expect(borrowToken).to.equal(zeroAddress);
+            expect(supplyToken).to.equal(zeroAddress);
+        });
+
+        it("Should set a best borrow and best supply token after Peek", async function() {
+            const peek = await aavetrageContract.peek()
+            const peekResult = await peek.wait()
             
-    //         const borrowToken = await aavetrageContract.borrowToken()
-    //         const supplyToken = await aavetrageContract.supplyToken()
+            const borrowToken = await aavetrageContract.borrowToken()
+            const supplyToken = await aavetrageContract.supplyToken()
 
-    //         expect(borrowToken).to.not.equal(zeroAddress);
-    //         expect(supplyToken).to.not.equal(zeroAddress);
-    //     });
-    // })
+            expect(borrowToken).to.not.equal(zeroAddress);
+            expect(supplyToken).to.not.equal(zeroAddress);
+        });
+    })
 
-    describe("Guap", function() {
-        // it("Should revert if there are no borrow or supply tokens set by Peek()", async function() {
-        //     const collateral = hre.ethers.utils.parseEther('100')
+    describe('Guap', function() {
 
-        //     const initialDaiAmount = await daiToken.balanceOf(owner.address)
+        it('Should revert if there are no borrow or supply tokens set by Peek()', async function() {
+            const collateral = hre.ethers.utils.parseEther('100')
 
-        //     const approval = await daiToken.approve(aavetrageContract.address, collateral);
-        //     const approvalResult = await approval.wait()
+            const approval = await daiToken.approve(aavetrageContract.address, collateral);
+            const approvalResult = await approval.wait()
 
-        //     const guap = await aavetrageContract.guap(daiToken.address, collateral);
-        //     const guapResult = await guap.wait()
+            await expect(aavetrageContract.guap(daiToken.address, collateral)).to.be.revertedWith('No borrow token found. Peek() not called yet.')
+        });
 
-        //     const resultDaiAmount = await daiToken.balanceOf(owner.address)
+        it('Should revert if no collateral is supplied to guap()', async function() {
+            const peek = await aavetrageContract.peek()
+            const peekResult = await peek.wait()
 
-        //     expect(parseInt(initialDaiAmount)).to.be.lessThan(parseInt(resultDaiAmount))
-        // })
+            await expect(aavetrageContract.guap(daiToken.address, hre.ethers.utils.parseEther('0'))).to.be.revertedWith('Must supply a collateral amount greater than 0.')
+        });
 
-        it("Should call guap() and debit collateral from end user account", async function() {
-            const peek = await aavetrageContract.peek({gasLimit: 1200000})
+        it('Should call guap() and debit collateral from end user account', async function() {
+            const peek = await aavetrageContract.peek()
             const peekResult = await peek.wait()
 
             const collateral = hre.ethers.utils.parseEther('100')
-            const initialDaiAmount = await daiToken.balanceOf(owner.address)
+            const initialDaiAmount = await daiToken.balanceOf(owner.address);
 
-            const approval = await daiToken.approve(aavetrageContract.address, collateral, {gasLimit: 1200000});
+            const approval = await daiToken.approve(aavetrageContract.address, collateral);
             const approvalResult = await approval.wait()
 
-            const guap = await aavetrageContract.guap(daiToken.address, collateral, {gasLimit: 1200000});
-            const guapResult = await guap.wait()
+            const guap = await aavetrageContract.guap(daiToken.address, collateral);
+            const guapResult = await guap.wait();
 
-            const resultDaiAmount = await daiToken.balanceOf(owner.address)
+            const resultDaiAmount = await daiToken.balanceOf(owner.address);
 
-            expect(parseInt(initialDaiAmount)).to.be.lessThan(parseInt(resultDaiAmount))
+            expect(initialDaiAmount).gt(resultDaiAmount)
         })
     });
 
-    
+    describe('Shut', async function() {
 
-//   describe("Transactions", function () {
-//     it("Should transfer tokens between accounts", async function () {
-//       // Transfer 50 tokens from owner to addr1
-//       await hardhatToken.transfer(addr1.address, 50);
-//       const addr1Balance = await hardhatToken.balanceOf(addr1.address);
-//       expect(addr1Balance).to.equal(50);
+        it('Should revert if there are no borrow or supply tokens set by Peek()', async function() {
+            await expect(aavetrageContract.shut()).to.be.revertedWith('No borrow token found. Peek() not called yet.')
+        });
 
-//       // Transfer 50 tokens from addr1 to addr2
-//       // We use .connect(signer) to send a transaction from another account
-//       await hardhatToken.connect(addr1).transfer(addr2.address, 50);
-//       const addr2Balance = await hardhatToken.balanceOf(addr2.address);
-//       expect(addr2Balance).to.equal(50);
-//     });
+        it('Should successfully unwind an arbitrage position', async function() {
+            const peek = await aavetrageContract.peek()
+            const peekResult = await peek.wait()
 
-//     it("Should fail if sender doesn’t have enough tokens", async function () {
-//       const initialOwnerBalance = await hardhatToken.balanceOf(owner.address);
+            const collateral = hre.ethers.utils.parseEther('100')
 
-//       // Try to send 1 token from addr1 (0 tokens) to owner (1000 tokens).
-//       // `require` will evaluate false and revert the transaction.
-//       await expect(
-//         hardhatToken.connect(addr1).transfer(owner.address, 1)
-//       ).to.be.revertedWith("Not enough tokens");
+            const approval = await daiToken.approve(aavetrageContract.address, collateral);
+            const approvalResult = await approval.wait()
 
-//       // Owner balance shouldn't have changed.
-//       expect(await hardhatToken.balanceOf(owner.address)).to.equal(
-//         initialOwnerBalance
-//       );
-//     });
+            const guap = await aavetrageContract.guap(daiToken.address, collateral);
+            const guapResult = await guap.wait();
 
-//     it("Should update balances after transfers", async function () {
-//       const initialOwnerBalance = await hardhatToken.balanceOf(owner.address);
+            const initialDaiAmount = await daiToken.balanceOf(owner.address);
 
-//       // Transfer 100 tokens from owner to addr1.
-//       await hardhatToken.transfer(addr1.address, 100);
+            const shut = await aavetrageContract.shut();
+            const shutResult = await shut.wait()
 
-//       // Transfer another 50 tokens from owner to addr2.
-//       await hardhatToken.transfer(addr2.address, 50);
+            const resultDaiAmount = await daiToken.balanceOf(owner.address);
 
-//       // Check balances.
-//       const finalOwnerBalance = await hardhatToken.balanceOf(owner.address);
-//       expect(finalOwnerBalance).to.equal(initialOwnerBalance - 150);
-
-//       const addr1Balance = await hardhatToken.balanceOf(addr1.address);
-//       expect(addr1Balance).to.equal(100);
-
-//       const addr2Balance = await hardhatToken.balanceOf(addr2.address);
-//       expect(addr2Balance).to.equal(50);
-//     });
-//   });
+            expect(initialDaiAmount).lt(resultDaiAmount)
+        })
+    })
 });

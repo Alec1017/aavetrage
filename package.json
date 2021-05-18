@@ -23,5 +23,8 @@
     "aavetrage": "node scripts/aavetrage.js",
     "transferDai": "node scripts/transferDai.js",
     "test": "npx hardhat test"
+  },
+  "devDependencies": {
+    "ethereum-waffle": "^3.3.0"
   }
 }

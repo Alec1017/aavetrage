@@ -37,12 +37,12 @@ contract Aavetrage {
 
     address WETH; 
 
-    constructor(address _provider, address _uniswapFactory, address _weth) public {
+    constructor(address _provider, address _uniswapRouter, address _weth) public {
         provider = ILendingPoolAddressesProvider(_provider);
         lendingPool = ILendingPool(provider.getLendingPool());
         priceOracle = IPriceOracle(provider.getPriceOracle());
 
-        uniswapRouter = IUniswapV2Router02(_uniswapFactory);
+        uniswapRouter = IUniswapV2Router02(_uniswapRouter);
         WETH = _weth;
     }
 

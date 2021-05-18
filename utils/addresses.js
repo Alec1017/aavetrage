@@ -7,8 +7,7 @@ module.exports = {
         kovanProvider: '0x88757f2f99175387aB4C6a4b3067c77A695b0349'
 	},
     uniswap: {
-        mainnetFactory: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D',
-        kovanFactory: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'
+        router: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D'
     },
 	tokens: {
         mainnet: {

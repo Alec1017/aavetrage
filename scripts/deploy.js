@@ -7,7 +7,7 @@ const addresses = require('../utils/addresses');
 async function deploy() {
     const Aavetrage = await hre.ethers.getContractFactory("Aavetrage");
 
-    const aavetrage = await Aavetrage.deploy(addresses.aave.kovanProvider, addresses.uniswap.kovanFactory, addresses.tokens.kovan.WETH);
+    const aavetrage = await Aavetrage.deploy(addresses.aave.kovanProvider, addresses.uniswap.router, addresses.tokens.kovan.WETH);
 
     await aavetrage.deployed();
 
