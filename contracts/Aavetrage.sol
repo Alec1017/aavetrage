@@ -22,9 +22,6 @@ contract Aavetrage {
     uint256 constant DECIMALS_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FFFFFFFFFFFF;
     uint256 constant RESERVE_DECIMALS_START_BIT_POSITION = 48;
 
-    // uniswap Kovan contract addresses
-    address constant UNISWAP_FACTORY = address(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
-    address constant WETH = address(0xd0A1E359811322d97991E03f863a0C30C2cF029C);
 
     ILendingPoolAddressesProvider private provider;
     ILendingPool private lendingPool;
@@ -32,18 +29,21 @@ contract Aavetrage {
 
     IUniswapV2Router02 private uniswapRouter;
 
-    IERC20 private borrowToken;
-    IERC20 private supplyToken;
-    IERC20 private collateralToken;
+    IERC20 public borrowToken;
+    IERC20 public supplyToken;
+    IERC20 public collateralToken;
 
     uint256 private collateralReserve;
 
-    constructor(address _provider) public {
+    address WETH; 
+
+    constructor(address _provider, address _uniswapFactory, address _weth) public {
         provider = ILendingPoolAddressesProvider(_provider);
         lendingPool = ILendingPool(provider.getLendingPool());
         priceOracle = IPriceOracle(provider.getPriceOracle());
 
-        uniswapRouter = IUniswapV2Router02(UNISWAP_FACTORY);
+        uniswapRouter = IUniswapV2Router02(_uniswapFactory);
+        WETH = _weth;
     }
 
     event Peek(address bestBorrow, address bestSupply, uint256 lowestBorrowRate, uint256 highestSupplyRate);
@@ -55,7 +55,7 @@ contract Aavetrage {
     /**
      * @dev Gets the best borrow/supply rate from the Aave V2 markets
      **/
-    function peek() public {
+    function peek() external {
 
         // Get all reserves on Aave
         address[] memory reserves = lendingPool.getReservesList();
@@ -98,7 +98,7 @@ contract Aavetrage {
      * @param collateralAsset The address of the token posted as collateral
      * @param collateralAmount The amount of collateral that is posted
      **/
-    function guap(address collateralAsset, uint256 collateralAmount) public {
+    function guap(address collateralAsset, uint256 collateralAmount) external {
         require(address(borrowToken) != address(0), 'No borrow token found. Peek() not called yet.');
         require(address(supplyToken) != address(0), 'No supply token found. Peek() not called yet.');
         require(collateralAmount > 0, 'Must supply a collateral amount greater than 0.');
@@ -130,7 +130,7 @@ contract Aavetrage {
     /**
      * @dev Unwinds positions in Aave and returns collateral to end user
      **/
-    function shut() public {
+    function shut() external {
         require(address(borrowToken) != address(0), 'No borrow token found. Peek() not called yet.');
         require(address(supplyToken) != address(0), 'No supply token found. Peek() not called yet.');
 
@@ -160,7 +160,7 @@ contract Aavetrage {
      * @param token The address of the token to be deposited
      * @param amount The amount of the token to deposit
      **/
-    function depositToken(address token, uint256 amount) private {
+    function depositToken(address token, uint256 amount) internal {
         // approve the deposit
         IERC20(token).approve(address(lendingPool), amount);
 
@@ -173,7 +173,7 @@ contract Aavetrage {
      * @dev Uses collateral to borrow a token from the Aave protocol
      * @param token The address of the token to borrow
      **/
-    function borrowAaveToken(address token) private {
+    function borrowAaveToken(address token) internal {
         DataTypes.ReserveData memory reserveData = lendingPool.getReserveData(token);
 
         uint256 borrowAmount = determineBorrowAmount(token);
@@ -192,7 +192,7 @@ contract Aavetrage {
      * @dev Determines how much of an asset to borrow based on total collateral and asset price using an oracle
      * @param token The address of the token
      **/
-    function determineBorrowAmount(address token) private view returns (uint256) {
+    function determineBorrowAmount(address token) internal view returns (uint256) {
         (, , uint256 availBorrow , , ,) = lendingPool.getUserAccountData(address(this));
 
         DataTypes.ReserveData memory reserveData = lendingPool.getReserveData(token);
@@ -218,7 +218,7 @@ contract Aavetrage {
      * @param to The address to send the swapped token
      * @param swapReserve Flag that determines whether to use WETH as an intermediary or not
      **/
-    function swapTokens(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin, address to, bool swapReserve) private {
+    function swapTokens(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOutMin, address to, bool swapReserve) internal {
         IERC20(tokenIn).approve(address(uniswapRouter), amountIn);
 
         // build path for swapping tokens
@@ -247,7 +247,7 @@ contract Aavetrage {
      * @param amount The total amount of collateral provided
      * @param percentage The percentage (as an integer) that should be set aside
      **/
-    function partitionFunds(uint256 amount, uint256 percentage) private view returns (uint256, uint256) {
+    function partitionFunds(uint256 amount, uint256 percentage) internal pure returns (uint256, uint256) {
         uint256 reserve = amount.mul(percentage).div(100);
 
         uint remaining = amount.sub(reserve);

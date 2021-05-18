@@ -4,20 +4,19 @@ require('dotenv').config();
 
 const contractArtifact = require('../artifacts/contracts/Aavetrage.sol/Aavetrage.json');
 const erc20ABI = require('../utils/standardABI')
-
-const kovanDaiAddress = '0xFf795577d9AC8bD7D90Ee22b6C1703490b6512FD'
+const addresses = require('../utils/addresses');
 
 async function run(collateralAmount) {
 
     // Get the provider
-    const provider = new hre.ethers.providers.AlchemyProvider('kovan', process.env.ALCHEMY_API_KEY) //kovan
+    const provider = new hre.ethers.providers.AlchemyProvider('kovan', process.env.ALCHEMY_API_KEY)
 
     // Get the metamask wallet addresss
     const wallet = new hre.ethers.Wallet(process.env.METAMASK_PRIVATE_KEY, provider)
 
     // Create contract instances
     const aavetrage = new hre.ethers.Contract(contractArtifact.deployAddress, contractArtifact.abi, wallet)
-    const kovanDAI = new hre.ethers.Contract(kovanDaiAddress, erc20ABI, wallet);
+    const kovanDAI = new hre.ethers.Contract(addresses.tokens.kovan.DAI, erc20ABI, wallet);
 
     // call peek()
     const peek = await aavetrage.peek()
@@ -35,7 +34,7 @@ async function run(collateralAmount) {
     console.log('Supplied collateral')
 
     // call guap()
-    const guap = await aavetrage.guap(kovanDaiAddress, collateral, {gasLimit: 1200000});
+    const guap = await aavetrage.guap(addresses.tokens.kovan.DAI, collateral, {gasLimit: 1200000});
     const guapResult = await guap.wait();
 
     console.log('Supplied tokens to Aave');
@@ -48,6 +47,7 @@ async function run(collateralAmount) {
 }
 
 
+// Run the script with 100 DAI posted as collateral
 run(100)
     .then(() => process.exit(0))
     .catch(error => {

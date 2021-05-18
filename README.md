@@ -1,0 +1,1 @@
+kovan deployment address: 0xa3A57158C0fb35F34F7Cb91A652e196d85Bb5090;

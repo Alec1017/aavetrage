@@ -2,13 +2,12 @@ const fs = require('fs');
 const hre = require("hardhat");
 
 const contractArtifact = require("../artifacts/contracts/Aavetrage.sol/Aavetrage.json");
+const addresses = require('../utils/addresses');
 
 async function deploy() {
     const Aavetrage = await hre.ethers.getContractFactory("Aavetrage");
 
-    // kovan: 0x88757f2f99175387aB4C6a4b3067c77A695b0349
-    // mainnet: 0xB53C1a33016B2DC2fF3653530bfF1848a515c8c5
-    const aavetrage = await Aavetrage.deploy('0x88757f2f99175387aB4C6a4b3067c77A695b0349');
+    const aavetrage = await Aavetrage.deploy(addresses.aave.kovanProvider, addresses.uniswap.kovanFactory, addresses.tokens.kovan.WETH);
 
     await aavetrage.deployed();
 
@@ -17,7 +16,7 @@ async function deploy() {
     contractArtifact['deployAddress'] = aavetrage.address;
 
     await fs.promises.writeFile("./artifacts/contracts/Aavetrage.sol/Aavetrage.json", JSON.stringify(contractArtifact, null, 4), function(err, result) {
-      if (err) console.log('error', err);
+        if (err) console.log('error', err);
     })
 }
 

@@ -8,6 +8,7 @@
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@openzeppelin/contracts": "3.3",
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
+    "chai": "^4.3.4",
     "dotenv": "^9.0.2",
     "ethers": "^5.1.4",
     "ganache-cli": "^6.12.2",
@@ -18,7 +19,9 @@
   "scripts": {
     "compile": "npx hardhat compile",
     "start-node": "npx hardhat node",
-    "deploy-local": "npx hardhat run scripts/deploy.js --network localhost",
-    "deploy-kovan": "npx hardhat run scripts/deploy.js --network kovan"
+    "deploy-kovan": "npx hardhat run scripts/deploy.js --network kovan",
+    "aavetrage": "node scripts/aavetrage.js",
+    "transferDai": "node scripts/transferDai.js",
+    "test": "npx hardhat test"
   }
 }
