@@ -4,7 +4,7 @@
 require('dotenv').config();
 require("@nomiclabs/hardhat-ethers");
  
-const { ALCHEMY_MAINNET_URL, ALCHEMY_KOVAN_URL, METAMASK_PRIVATE_KEY } = process.env;
+const { ALCHEMY_API_KEY, METAMASK_PRIVATE_KEY } = process.env;
  
 module.exports = {
    solidity: "0.6.12",
@@ -12,11 +12,11 @@ module.exports = {
    networks: {
       hardhat: {
          forking: {
-            url: ALCHEMY_MAINNET_URL
+            url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_API_KEY}`
          }
       },
       kovan: {
-         url: ALCHEMY_KOVAN_URL,
+         url: `https://eth-kovan.alchemyapi.io/v2/${ALCHEMY_API_KEY}`,
          accounts: [`0x${METAMASK_PRIVATE_KEY}`]
       }
    },
