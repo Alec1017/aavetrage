@@ -32,33 +32,71 @@ describe("Aavetrage Tests", function () {
     });
 
  
-    describe("Deployment", function () {
-        it("Should ensure there is DAI than can be used as capital", async function () {
-            const ownerBalance = await daiToken.balanceOf(owner.address);
-            expect(parseInt(ownerBalance)).to.be.greaterThan(0);
-        });
+    // describe("Deployment", function () {
+    //     it("Should ensure there is DAI than can be used as capital", async function () {
+    //         const ownerBalance = await daiToken.balanceOf(owner.address);
+    //         expect(parseInt(ownerBalance)).to.be.greaterThan(0);
+    //     });
+    // });
+
+    // describe("Peek", function() {
+    //     it("Should not have a borrow or supply token set before Peek", async function() {
+    //         const borrowToken = await aavetrageContract.borrowToken()
+    //         const supplyToken = await aavetrageContract.supplyToken()
+
+    //         expect(borrowToken).to.equal(zeroAddress);
+    //         expect(supplyToken).to.equal(zeroAddress);
+    //     });
+
+    //     it("Should set a best borrow and best supply token after Peek", async function() {
+    //         const peek = await aavetrageContract.peek()
+    //         const peekResult = await peek.wait()
+            
+    //         const borrowToken = await aavetrageContract.borrowToken()
+    //         const supplyToken = await aavetrageContract.supplyToken()
+
+    //         expect(borrowToken).to.not.equal(zeroAddress);
+    //         expect(supplyToken).to.not.equal(zeroAddress);
+    //     });
+    // })
+
+    describe("Guap", function() {
+        // it("Should revert if there are no borrow or supply tokens set by Peek()", async function() {
+        //     const collateral = hre.ethers.utils.parseEther('100')
+
+        //     const initialDaiAmount = await daiToken.balanceOf(owner.address)
+
+        //     const approval = await daiToken.approve(aavetrageContract.address, collateral);
+        //     const approvalResult = await approval.wait()
+
+        //     const guap = await aavetrageContract.guap(daiToken.address, collateral);
+        //     const guapResult = await guap.wait()
+
+        //     const resultDaiAmount = await daiToken.balanceOf(owner.address)
+
+        //     expect(parseInt(initialDaiAmount)).to.be.lessThan(parseInt(resultDaiAmount))
+        // })
+
+        it("Should call guap() and debit collateral from end user account", async function() {
+            const peek = await aavetrageContract.peek({gasLimit: 1200000})
+            const peekResult = await peek.wait()
+
+            const collateral = hre.ethers.utils.parseEther('100')
+            const initialDaiAmount = await daiToken.balanceOf(owner.address)
+
+            const approval = await daiToken.approve(aavetrageContract.address, collateral, {gasLimit: 1200000});
+            const approvalResult = await approval.wait()
+
+            const guap = await aavetrageContract.guap(daiToken.address, collateral, {gasLimit: 1200000});
+            const guapResult = await guap.wait()
+
+            const resultDaiAmount = await daiToken.balanceOf(owner.address)
+
+            expect(parseInt(initialDaiAmount)).to.be.lessThan(parseInt(resultDaiAmount))
+        })
     });
 
-    describe("Peek", function() {
-        it("Should revert not have a borrow or supply token set before Peek", async function() {
-            const borrowToken = await aavetrageContract.borrowToken()
-            const supplyToken = await aavetrageContract.supplyToken()
-
-            expect(borrowToken).to.equal(zeroAddress);
-            expect(supplyToken).to.equal(zeroAddress);
-        });
-
-        it("Should set a best borrow and best supply token after Peek", async function() {
-            const peek = await aavetrageContract.peek()
-            const peekResult = await peek.wait()
-            
-            const borrowToken = await aavetrageContract.borrowToken()
-            const supplyToken = await aavetrageContract.supplyToken()
-
-            expect(borrowToken).to.not.equal(zeroAddress);
-            expect(supplyToken).to.not.equal(zeroAddress);
-        });
-    })
+    
 
 //   describe("Transactions", function () {
 //     it("Should transfer tokens between accounts", async function () {
