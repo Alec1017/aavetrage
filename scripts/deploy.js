@@ -1,12 +1,23 @@
+const fs = require('fs');
 const hre = require("hardhat");
 
+const contractArtifact = require("../artifacts/contracts/Aavetrage.sol/Aavetrage.json");
+const addresses = require('../utils/addresses');
+
 async function deploy() {
-    const Greeter = await hre.ethers.getContractFactory("Test");
-    const greeter = await Greeter.deploy();
+    const Aavetrage = await hre.ethers.getContractFactory("Aavetrage");
 
-    await greeter.deployed();
+    const aavetrage = await Aavetrage.deploy(addresses.aave.kovanProvider, addresses.uniswap.router, addresses.tokens.kovan.WETH);
 
-    console.log("Greeter deployed to:", greeter.address);
+    await aavetrage.deployed();
+
+    console.log("Aavetrage deployed to:", aavetrage.address);
+
+    contractArtifact['deployAddress'] = aavetrage.address;
+
+    await fs.promises.writeFile("./artifacts/contracts/Aavetrage.sol/Aavetrage.json", JSON.stringify(contractArtifact, null, 4), function(err, result) {
+        if (err) console.log('error', err);
+    })
 }
 
 deploy()
